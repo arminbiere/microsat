@@ -24,6 +24,7 @@ then
       ;;
   esac
 fi
+CFLAGS="$CFLAGS -DVERSION=\\\"`cat VERSION`\\\""
 echo "$CC $CFLAGS"
 rm -f makefile
 cat > makefile <<EOF
