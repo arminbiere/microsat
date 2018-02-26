@@ -1,6 +1,6 @@
 Compile using:
 
-  gcc microsat.c -O2 -DSTANDALONE -o microsat
+  ./configure && make
 
 Use as follows:
 

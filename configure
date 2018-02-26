@@ -30,5 +30,5 @@ cat > makefile <<EOF
 microsat: microsat.c makefile
 	$CC $CFLAGS -o microsat microsat.c
 clean:
-	rm -f mcicrosat makefile
+	rm -f microsat makefile
 EOF
