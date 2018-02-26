@@ -26,12 +26,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define END        -9
-#define UNSAT       0
-#define SAT         1
-#define MARK        2
-#define IMPLIED     6
+enum { END = -9, UNSAT = 0, SAT = 1, MARK = 2, IMPLIED = 6 };
 
 struct solver { // The variables in the struct are described in the allocate procedure
   int  *DB, nVars, nClauses, mem_used, mem_fixed, mem_max, maxLemmas, nLemmas, *buffer, nConflicts, *model,
@@ -56,9 +53,7 @@ void addWatch (struct solver* S, int lit, int mem) {               // Add a watc
 
 int* getMemory (struct solver* S, int mem_size) {                  // Allocate memory of size mem_size
   if (S->mem_used + mem_size > S->mem_max) {                       // In case the code is used within a code base
-    S->mem_max = 3 * (S->mem_used + mem_size) / 2;                 // Increase the maximum allowed memory by ~50%
-    printf ("c reallocating memory to %i\n", S->mem_max);
-    S->DB = realloc (S->DB, sizeof(int) * S->mem_max); }           // And allocated the database appropriately
+    fprintf (stderr, "out-of-memory\n"); abort (); }
   int *store = (S->DB + S->mem_used);                              // Compute a pointer to the new memory location
   S->mem_used += mem_size;                                         // Update the size of the used memory
   return store; }                                                  // Return the pointer
@@ -187,7 +182,7 @@ void initCDCL (struct solver* S, int n, int m) {
   if (n < 1)   n = 1;                  // The code assumes that there is at least one variable
   S->nVars       = n;                  // Set the number of variables
   S->nClauses    = m;                  // Set the number of clauases
-  S->mem_max     = 10000000;           // Set the initial maximum memory
+  S->mem_max     = 1<<30;              // Set the initial maximum memory
   S->mem_used    = 0;                  // The number of integers allocated in the DB
   S->nLemmas     = 0;                  // The number of learned clauses -- redundant means learned
   S->nConflicts  = 0;                  // Under of conflicts which is used to updates scores
@@ -214,7 +209,12 @@ void initCDCL (struct solver* S, int n, int m) {
   S->head = n; }                                           // Initialize the head of the double-linked list
 
 int parse (struct solver* S, char* filename) {                            // Parse the formula and initialize
-  int tmp; FILE* input = fopen (filename, "r");                           // Read the CNF file
+  int tmp; FILE* input; int close = 1;
+  if (strcmp (filename + strlen (filename) - 3, ".xz"))
+    input = fopen (filename, "r");					  // Open file
+  else { char * cmd = malloc (strlen (filename) + 20);
+    sprintf (cmd, "xz -c -d %s", filename);
+    input = popen (cmd, "r"); close = 2; free (cmd); }		          // Open pipe
   do { tmp = fscanf (input, " p cnf %i %i \n", &S->nVars, &S->nClauses);  // Find the first non-comment line
     if (tmp > 0 && tmp != EOF) break; tmp = fscanf (input, "%*s\n"); }    // In case a commment line was found
   while (tmp != 2 && tmp != EOF);                                         // Skip it and read next line
@@ -231,7 +231,8 @@ int parse (struct solver* S, char* filename) {                            // Par
         assign (S, clause, 1); }                           // Directly assign new units (forced = 1)
       size = 0; --nZeros; }                                // Reset buffer
     else S->buffer[size++] = lit; }                        // Add literal to buffer
-  fclose (input);                                          // Close the formula file
+  if (close == 1) fclose (input);                          // Close the formula file
+  if (close == 2) pclose (input);                          // Close the formula pipe
   return SAT; }                                            // Return that no conflict was observed
 
 int main (int argc, char** argv) {			               // The main procedure for a STANDALONE solver
