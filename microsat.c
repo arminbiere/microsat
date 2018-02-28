@@ -28,10 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { END = -9, UNSAT = 0, SAT = 1, MARK = 2, IMPLIED = 6 };
+enum { END = -9, UNSAT = 0, SAT = 1, MARK = 2, IMPLIED = 6, MEM_MAX = (1 << 30) };
 
 struct solver { // The variables in the struct are described in the allocate procedure
-  int  *DB, nVars, nClauses, mem_used, mem_fixed, mem_max, maxLemmas, nLemmas, *buffer, nConflicts, *model,
+  int  *DB, nVars, nClauses, mem_used, mem_fixed, maxLemmas, nLemmas, *buffer, nConflicts, *model,
        *reason, *falseStack, *false, *first, *forced, *processed, *assigned, *next, *prev, head, res, set, not; };
 
 void unassign (struct solver* S, int lit) { S->false[lit] = 0; }   // Unassign the literal
@@ -52,7 +52,7 @@ void addWatch (struct solver* S, int lit, int mem) {               // Add a watc
   S->DB[mem] = S->first[lit]; S->first[lit] = mem; }               // By updating the database and the pointers
 
 int* getMemory (struct solver* S, int mem_size) {                  // Allocate memory of size mem_size
-  if (S->mem_used + mem_size > S->mem_max) {                       // In case the code is used within a code base
+  if (S->mem_used > MEM_MAX - mem_size) {                          // In case the code is used within a code base
     printf ("c out of memory\n"); exit (0); }
   int *store = (S->DB + S->mem_used);                              // Compute a pointer to the new memory location
   S->mem_used += mem_size;                                         // Update the size of the used memory
@@ -182,13 +182,12 @@ void initCDCL (struct solver* S, int n, int m) {
   if (n < 1)   n = 1;                  // The code assumes that there is at least one variable
   S->nVars       = n;                  // Set the number of variables
   S->nClauses    = m;                  // Set the number of clauases
-  S->mem_max     = 1 << 30;            // Set the initial maximum memory
   S->mem_used    = 0;                  // The number of integers allocated in the DB
   S->nLemmas     = 0;                  // The number of learned clauses -- redundant means learned
   S->nConflicts  = 0;                  // Under of conflicts which is used to updates scores
   S->maxLemmas   = 2000;               // Initial maximum number of learnt clauses
 
-  S->DB = (int *) malloc (sizeof (int) * S->mem_max); // Allocate the initial database
+  S->DB = (int *) malloc (sizeof (int) * MEM_MAX); // Allocate the initial database
   S->model       = getMemory (S, n+1); // Full assignment of the (Boolean) variables (initially set to false)
   S->next        = getMemory (S, n+1); // Next variable in the heuristic order
   S->prev        = getMemory (S, n+1); // Previous variable in the heuristic order
