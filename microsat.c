@@ -52,7 +52,7 @@ void addWatch (struct solver* S, int lit, int mem) {               // Add a watc
 
 int* getMemory (struct solver* S, int mem_size) {                  // Allocate memory of size mem_size
   if (S->mem_used > MEM_MAX - mem_size) {                          // In case the code is used within a code base
-    printf ("c out of memory\n"); exit (0); }
+    printf ("c out of memory\n"); exit (1); }
   int *store = (S->DB + S->mem_used);                              // Compute a pointer to the new memory location
   S->mem_used += mem_size;                                         // Update the size of the used memory
   return store; }                                                  // Return the pointer
@@ -223,6 +223,14 @@ int parse (struct solver* S, char* filename) {                            // Par
   initCDCL (S, S->nVars, S->nClauses);                     // Allocate the main datastructures
   int nZeros = S->nClauses, size = 0;                      // Initialize the number of clauses to read
   while (nZeros > 0) {                                     // While there are clauses in the file
+    int ch = getc (input);
+    if (ch == ' ' || ch == '\n') continue;
+    if (ch == 'c') {
+      while ((ch = getc (input)) != '\n')
+	if (ch == EOF) { printf ("parse error: unexpected EOF\n"); exit (1); }
+      continue;
+    }
+    ungetc (ch, input);
     int lit = 0; tmp = fscanf (input, " %i ", &lit);       // Read a literal.
     if (!lit) {                                            // If reaching the end of the clause
       int* clause = addClause (S, S->buffer, size, 1);     // Then add the clause to data_base
